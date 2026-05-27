@@ -1,14 +1,43 @@
-# HappeningNowSignal
+# HappeningNow Signal Widget
 
-A lightweight, public [Übersicht](https://tracesof.net/uebersicht/) desktop widget for macOS that surfaces **Today's Signal** from [HappeningNow](https://happeningnow.news) — a curated, real-time news feed focused on what matters right now.
+A lightweight [Übersicht](https://tracesof.net/uebersicht/) desktop widget for macOS that brings **Today's Signal** from [HappeningNow](https://happeningnow.news) to your desktop — curated, real-time headlines ranked by what matters right now.
 
-This repository contains **client/widget code only**. No backend, Supabase, Netlify, secrets, or internal APIs.
+![macOS](https://img.shields.io/badge/macOS-required-blue)
+![Übersicht](https://img.shields.io/badge/Übersicht-widget-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+## About
+
+**HappeningNow Signal** is a glass-style news panel that sits on your macOS desktop and refreshes automatically from HappeningNow's public feed. No account, API key, or backend setup — just install the widget and read the signal.
+
+Each story tile shows:
+
+- **Category** — Technology, Business, Global, and 8 other lanes
+- **Headline** — click to open the story in your browser
+- **Source** — where the story originated
+- **Freshness** — how recently it was picked up
+- **Breaking badge** — when a story is flagged as breaking news
+
+Use **Settings** to switch dark/light theme, move the panel (top-right, top-left, or center), filter by category, and choose how many stories appear per lane (1–3). **About** links to the HappeningNow website, public API feed, this GitHub repo, and a optional donation page.
+
+This repository contains **client/widget code only** — no backend, Supabase, Netlify, secrets, or internal APIs.
 
 ## What is HappeningNow?
 
-HappeningNow aggregates and ranks breaking stories across categories like Technology, Business, Global, and more. The widget reads a public cached JSON feed and displays the top headlines on your desktop — category, title, source, and freshness — in a compact news-terminal layout.
+[HappeningNow](https://happeningnow.news) aggregates and ranks breaking stories across categories. The widget reads a public cached JSON feed and displays headlines in a compact, readable panel.
 
-**Feed:** `https://happeningnow.news/api/public/today.json`
+**Public feed:** `https://happeningnow.news/api/public/today.json?view=categories`
+
+## Features
+
+- **One API call** — grouped `today.json?view=categories` only (every 15 minutes)
+- **No HTML scraping** — no category-page requests or extra network traffic
+- **11 category lanes** — dropdown populated from `categories[]` in the payload
+- **All view** — round-robin merge across lanes for a balanced list
+- **Per-category view** — shows that lane's stories (up to your stories-per-category setting)
+- **Stories per category** — choose 1, 2, or 3 stories per lane in Settings
+- **Dark & light themes** — glassmorphism UI with persisted preferences
+- **Position control** — top-right (default), top-left, or center
 
 ## Install Übersicht
 
@@ -21,8 +50,8 @@ HappeningNow aggregates and ranks breaking stories across categories like Techno
 ### Option A — Clone into your widgets folder
 
 ```bash
-git clone https://github.com/YOUR_ORG/happeningnow-ubersicht-widget.git
-cp -R happeningnow-ubersicht-widget/HappeningNowSignal.widget ~/Library/Application\ Support/Übersicht/widgets/
+git clone https://github.com/ReyWins/happeningnow-widget.git
+cp -R happeningnow-widget/HappeningNowSignal.widget ~/Library/Application\ Support/Übersicht/widgets/
 ```
 
 ### Option B — Manual copy
@@ -31,13 +60,20 @@ cp -R happeningnow-ubersicht-widget/HappeningNowSignal.widget ~/Library/Applicat
 2. Copy the `HappeningNowSignal.widget` folder into that directory.
 3. Übersicht hot-reloads widgets — the signal should appear within a few seconds.
 
-### Position
+## Widget controls
 
-The widget defaults to the **top-right** (`top: 24px; right: 24px`). Edit the `style` block in `index.coffee` to move it.
+| Control | Description |
+|---------|-------------|
+| **Settings ▾** | Dark/Light theme, screen position (Top Right, Top Left, Center), stories per category (1–3), and category filter (All + all 11 lanes). |
+| **About ▾** | Version, website, API feed, GitHub repo, and Donate link. |
+
+Preferences (theme, position, stories per category) are saved in `localStorage` only. Default position: **Top Right**. Default theme: **Dark**. Default stories per category: **3**.
+
+**Note:** Übersicht runs `index.coffee` only. Do not add `index.js` to the widget folder — a stale compiled file can cause parse errors.
 
 ## Refresh interval
 
-Default: **15 minutes** (900,000 ms).
+Default: **15 minutes**.
 
 The public feed is cached server-side, so polling every 10–15 minutes keeps network and CPU use low while staying reasonably fresh. Adjust in `index.coffee`:
 
@@ -50,80 +86,41 @@ config =
 
 **Widget consumes a public cached JSON feed. No account or API key required.**
 
-- No localStorage or persistent local data
+- Lightweight `localStorage` keys for theme, position, and stories-per-category
 - No tokens or credentials
-- Only calls the public `today.json` endpoint via Übersicht's built-in proxy
-- Clicking a story opens its URL in your default browser
-
-## Screenshots
-
-Add desktop captures to `screenshots/` for the README gallery.
-
-| File | Suggested size | Description |
-|------|----------------|-------------|
-| `screenshots/widget-loaded.png` | **760 × 520 px** (2× retina: 1520 × 1040) | Widget with live stories |
-| `screenshots/widget-empty.png` | **760 × 520 px** | Empty / waiting state |
-| `screenshots/widget-error.png` | **760 × 520 px** | Error state |
-| `screenshots/widget-ultrawide.png` | **1200 × 520 px** | Top-right on ultrawide |
-
-Capture tip: hide other widgets, use a dark wallpaper, and crop to the widget plus ~40px margin.
+- Only calls the public grouped `today.json` endpoint via Übersicht's built-in proxy
+- Clicking a story opens `shortUrl` (or `url`) in your default browser
 
 ## Customization
 
-All options live at the top of `HappeningNowSignal.widget/index.coffee`:
+Edit `HappeningNowSignal.widget/index.coffee`:
 
-```coffee
-config =
-  refreshMinutes: 15    # poll interval (10–15 recommended)
-  maxStories: 5         # headlines shown (feed may return fewer)
-  categories: []        # future v2 — e.g. ['tech', 'business', 'cyber']
-```
+- `config.refreshMinutes` — poll interval
+- `config.defaultStoriesPerCategory` — default 1/2/3 limit
+- `position.x`, `position.y`, `position.menuGap` — placement offsets
+- `style:` block — all widget CSS (Übersicht does not load external stylesheets)
 
-### Refresh interval
-
-Set `refreshMinutes` between **10** and **15**. The widget multiplies by 60,000 for `refreshFrequency`.
-
-### Max stories
-
-Increase or decrease `maxStories` to fit your screen. The layout scrolls when content exceeds `max-height`.
-
-### Category filtering (future v2)
-
-The API URL builder already supports an optional `?categories=` query when `config.categories` is populated:
-
-```coffee
-categories: ['tech', 'business', 'cyber']
-```
-
-Category filtering UI is **not implemented yet** — this is a placeholder for a future release.
-
-### Styling
-
-Edit `HappeningNowSignal.widget/styles.css` for colors, blur, sizing, and typography. Positioning stays in the `style` block in `index.coffee`.
+`styles.css` is a reference copy only; the `style:` block in `index.coffee` is what Übersicht applies.
 
 ## Widget preview
 
-Dark glassmorphism panel with:
+Dark glassmorphism panel (~400px wide) with:
 
-- **Header** — HappeningNow / Today's Signal + live status dot
-- **Story cards** — category pill, freshness, headline, source
-- **Hover** — subtle lift and border brightening
-- **Click** — opens story in browser
+- **Header** — HappeningNow Signal + live status dot
+- **Story tiles** — category pill (lane label), Breaking + freshness badges, headline, source
+- **Click** — opens story short link in browser
 - **Empty** — “Waiting for Today's Signal…”
 - **Error** — “Signal temporarily unavailable.”
-
-Responsive `clamp()` width works on MacBook, standard, and ultrawide displays.
 
 ## Repository structure
 
 ```
-happeningnow-ubersicht-widget/
+happeningnow-widget/
 ├── LICENSE
 ├── README.md
-├── screenshots/
-│   └── .gitkeep
 └── HappeningNowSignal.widget/
     ├── index.coffee
+    ├── logo.webp
     └── styles.css
 ```
 
@@ -132,6 +129,10 @@ happeningnow-ubersicht-widget/
 - macOS with Übersicht installed
 - Network access (public JSON feed only)
 
+## Support the project
+
+If you find this widget useful, you can [buy me a coffee](https://buymeacoffee.com/happeningnow) to support HappeningNow and ongoing widget updates.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
@@ -139,5 +140,7 @@ MIT — see [LICENSE](LICENSE).
 ## Links
 
 - [HappeningNow](https://happeningnow.news)
-- [Public feed](https://happeningnow.news/api/public/today.json)
+- [Public grouped feed](https://happeningnow.news/api/public/today.json?view=categories)
 - [Übersicht](https://tracesof.net/uebersicht/)
+- [GitHub repository](https://github.com/ReyWins/happeningnow-widget)
+- [Donate](https://buymeacoffee.com/happeningnow)
