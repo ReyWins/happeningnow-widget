@@ -1,7 +1,7 @@
 # HappeningNowSignal — lightweight Übersicht widget
 # Feed: https://happeningnow.news/api/public/today.json?view=categories
 
-WIDGET_VERSION = '2.2.5'
+WIDGET_VERSION = '2.2.6'
 WIDGET_WIDTH = 400
 MENU_LAYER_TOP = 52
 MENU_LAYER_RIGHT = 16
@@ -11,6 +11,9 @@ STORIES_KEY = 'hn-signal-stories-per-category'
 POSITIONS = ['top-right', 'top-left', 'center']
 THEMES = ['dark', 'light']
 STORIES_PER_CATEGORY_OPTS = [1, 2, 3]
+
+GITHUB_URL = 'https://github.com/ReyWins/happeningnow-widget'
+DONATE_URL = 'https://buymeacoffee.com/happeningnow'
 
 position =
   x: 24
@@ -23,8 +26,8 @@ config =
   defaultStoriesPerCategory: 3
   logoFile: 'logo.webp'
   websiteUrl: 'https://happeningnow.news'
-  githubUrl: 'https://github.com/ReyWins/happeningnow-widget'
-  donateUrl: 'https://buymeacoffee.com/happeningnow'
+  githubUrl: GITHUB_URL
+  donateUrl: DONATE_URL
 
 API_URL = 'https://happeningnow.news/api/public/today.json?view=categories'
 PROXY = 'http://127.0.0.1:41417/'
@@ -305,6 +308,34 @@ style: """
 
   &.hn-theme-light .hn-dropdown-link
     color: #0284c7
+
+  .hn-dropdown-donate
+    display: block
+    width: calc(100% - 10px)
+    margin: 8px 5px 2px
+    padding: 7px 10px
+    border: none
+    border-radius: 8px
+    font-size: 10px
+    font-weight: 600
+    text-align: center
+    cursor: pointer
+    text-decoration: none
+    box-sizing: border-box
+
+  &.hn-theme-dark .hn-dropdown-donate
+    color: #1a1208
+    background: linear-gradient(180deg, #ffdd57 0%, #f5b942 100%)
+
+  &.hn-theme-dark .hn-dropdown-donate:hover
+    background: linear-gradient(180deg, #ffe566 0%, #ffc04d 100%)
+
+  &.hn-theme-light .hn-dropdown-donate
+    color: #1a1208
+    background: linear-gradient(180deg, #ffdd57 0%, #f5b942 100%)
+
+  &.hn-theme-light .hn-dropdown-donate:hover
+    background: linear-gradient(180deg, #ffe566 0%, #ffc04d 100%)
 
   .hn-dropdown-meta
     padding: 4px 7px
@@ -989,6 +1020,19 @@ renderFeed: (domEl) ->
   $body.html html
   @applyPosition domEl
 
+renderAboutDropdown: ->
+  """
+  <div class="hn-dropdown" data-menu="about">
+    <div class="hn-dropdown-label">HappeningNow Signal</div>
+    <div class="hn-dropdown-meta">Version: v#{WIDGET_VERSION}</div>
+    <div class="hn-dropdown-divider"></div>
+    <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(config.websiteUrl)}">Website</a>
+    <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(API_URL)}">API feed</a>
+    <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(GITHUB_URL)}">GitHub</a>
+    <a class="hn-dropdown-donate" href="#" data-open-url="#{@escapeHtml(DONATE_URL)}">☕ Donate</a>
+  </div>
+  """
+
 renderMenuLayer: ->
   theme = @loadTheme()
   pos = @loadPosition()
@@ -1020,15 +1064,7 @@ renderMenuLayer: ->
         #{@renderCategoryOptions('all', [])}
       </select>
     </div>
-    <div class="hn-dropdown" data-menu="about">
-      <div class="hn-dropdown-label">HappeningNow Signal</div>
-      <div class="hn-dropdown-meta">Version: v#{WIDGET_VERSION}</div>
-      <div class="hn-dropdown-divider"></div>
-      <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(config.websiteUrl)}">Website</a>
-      <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(API_URL)}">API feed</a>
-      <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(config.githubUrl)}">GitHub</a>
-      <a class="hn-dropdown-link" href="#" data-open-url="#{@escapeHtml(config.donateUrl)}">Donate</a>
-    </div>
+    #{@renderAboutDropdown()}
   </div>
   """
 
