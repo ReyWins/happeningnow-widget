@@ -1,7 +1,7 @@
 # HappeningNowSignal — lightweight Übersicht widget
 # Feed: https://happeningnow.news/api/public/today.json?view=categories
 
-WIDGET_VERSION = '2.2.6'
+WIDGET_VERSION = '2.2.7'
 WIDGET_WIDTH = 400
 MENU_LAYER_TOP = 52
 MENU_LAYER_RIGHT = 16
@@ -11,6 +11,21 @@ STORIES_KEY = 'hn-signal-stories-per-category'
 POSITIONS = ['top-right', 'top-left', 'center']
 THEMES = ['dark', 'light']
 STORIES_PER_CATEGORY_OPTS = [1, 2, 3]
+
+# Full HappeningNow editorial lanes (API may omit lanes with no stories yet).
+CATEGORY_LANES = [
+  { id: 'global', label: 'Global' }
+  { id: 'business', label: 'Business & Economy' }
+  { id: 'tech', label: 'Technology' }
+  { id: 'cyber', label: 'Cybersecurity' }
+  { id: 'energy', label: 'Energy' }
+  { id: 'science', label: 'Science' }
+  { id: 'health', label: 'Health' }
+  { id: 'crime', label: 'Crime & Justice' }
+  { id: 'sports', label: 'Sports' }
+  { id: 'weather', label: 'Weather & Disasters' }
+  { id: 'entertainment', label: 'Entertainment' }
+]
 
 GITHUB_URL = 'https://github.com/ReyWins/happeningnow-widget'
 DONATE_URL = 'https://buymeacoffee.com/happeningnow'
@@ -702,6 +717,36 @@ categorySlug: (id) ->
   slug = String(id ? '').toLowerCase().replace(/[^a-z0-9-]/g, '')
   if slug then slug else 'default'
 
+mergeCategories: (apiCategories) ->
+  apiMap = {}
+  if Array.isArray(apiCategories)
+    for category in apiCategories
+      id = String(category?.id ? '')
+      continue unless id
+      apiMap[id] = category
+
+  merged = []
+  seen = {}
+  for lane in CATEGORY_LANES
+    id = lane.id
+    seen[id] = true
+    fromApi = apiMap[id]
+    merged.push
+      id: id
+      label: if fromApi?.label then fromApi.label else lane.label
+      stories: if Array.isArray(fromApi?.stories) then fromApi.stories else []
+
+  for category in apiCategories ? []
+    id = String(category?.id ? '')
+    continue unless id
+    continue if seen[id]
+    merged.push
+      id: id
+      label: if category?.label then category.label else id
+      stories: if Array.isArray(category.stories) then category.stories else []
+
+  merged
+
 freshnessSlug: (freshness) ->
   key = String(freshness ? '').toLowerCase().trim()
   if key is 'breaking' then 'breaking'
@@ -886,7 +931,7 @@ applyPosition: (domEl) ->
 
 syncCategorySelect: (domEl) ->
   $root = $(domEl)
-  categories = @lastPayload?.categories
+  categories = @mergeCategories(@lastPayload?.categories)
   selected = @selectedCategory ? 'all'
   if selected isnt 'all'
     found = false
@@ -988,13 +1033,14 @@ renderFeed: (domEl) ->
     @showMessage $root, 'Signal temporarily unavailable.', 'error'
     return
 
+  categories = @mergeCategories(payload.categories)
   @syncCategorySelect domEl
   selected = @selectedCategory ? 'all'
   maxPer = @loadStoriesPerCategory()
   stories = if selected is 'all'
-    @balancedAllStories(payload.categories, maxPer)
+    @balancedAllStories(categories, maxPer)
   else
-    @storiesForCategory(payload.categories, selected, maxPer)
+    @storiesForCategory(categories, selected, maxPer)
 
   if stories.length is 0
     hasCategories = payload.categories?.length > 0
@@ -1061,7 +1107,7 @@ renderMenuLayer: ->
       <div class="hn-dropdown-label">Category</div>
       <div class="hn-dropdown-note">All lanes from grouped feed</div>
       <select class="hn-dropdown-select" data-category-filter aria-label="Category">
-        #{@renderCategoryOptions('all', [])}
+        #{@renderCategoryOptions('all', @mergeCategories([]))}
       </select>
     </div>
     #{@renderAboutDropdown()}
