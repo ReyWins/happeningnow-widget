@@ -1,13 +1,14 @@
 # HappeningNowSignal — lightweight Übersicht widget
 # Feed: https://happeningnow.news/api/public/today.json?view=categories
 
-WIDGET_VERSION = '2.2.7'
+WIDGET_VERSION = '2.2.9'
 WIDGET_WIDTH = 400
 MENU_LAYER_TOP = 52
 MENU_LAYER_RIGHT = 16
 THEME_KEY = 'hn-signal-theme'
 POSITION_KEY = 'hn-signal-position'
 STORIES_KEY = 'hn-signal-stories-per-category'
+PAYLOAD_KEY = 'hn-signal-payload'
 POSITIONS = ['top-right', 'top-left', 'center']
 THEMES = ['dark', 'light']
 STORIES_PER_CATEGORY_OPTS = [1, 2, 3]
@@ -224,6 +225,10 @@ style: """
     background: rgba(255, 255, 255, 0.92)
     border: 1px solid rgba(255, 255, 255, 0.72)
     box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18)
+
+  .hn-dropdown[data-menu="settings"]
+    max-height: none
+    overflow-y: visible
 
   .hn-dropdown.is-open
     display: block
@@ -668,6 +673,90 @@ style: """
   &.hn-theme-light .hn-message
     color: rgba(51, 65, 85, 0.86)
 
+  .hn-body.hn-body--initial
+    min-height: 52px
+
+  .hn-initial-load
+    padding: 10px 2px 6px
+
+  .hn-sync-label
+    margin-top: 8px
+    font-size: 10px
+    letter-spacing: 0.01em
+    text-align: center
+
+  &.hn-theme-dark .hn-sync-label
+    color: rgba(255, 255, 255, 0.48)
+
+  &.hn-theme-light .hn-sync-label
+    color: rgba(51, 65, 85, 0.72)
+
+  .hn-sync-bar
+    height: 2px
+    border-radius: 999px
+    overflow: hidden
+
+  &.hn-theme-dark .hn-sync-bar
+    background: rgba(255, 255, 255, 0.1)
+
+  &.hn-theme-light .hn-sync-bar
+    background: rgba(15, 23, 42, 0.08)
+
+  .hn-sync-bar-fill
+    display: block
+    width: 42%
+    height: 100%
+    border-radius: inherit
+    animation: hn-sync-progress 1.35s ease-in-out infinite
+
+  &.hn-theme-dark .hn-sync-bar-fill
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.15) 0%, rgba(56, 189, 248, 0.85) 50%, rgba(56, 189, 248, 0.15) 100%)
+
+  &.hn-theme-light .hn-sync-bar-fill
+    background: linear-gradient(90deg, rgba(2, 132, 199, 0.12) 0%, rgba(2, 132, 199, 0.72) 50%, rgba(2, 132, 199, 0.12) 100%)
+
+  .hn-refresh-bar
+    position: absolute
+    top: 0
+    left: 12px
+    right: 12px
+    height: 2px
+    border-radius: 0 0 2px 2px
+    overflow: hidden
+    opacity: 0
+    pointer-events: none
+    z-index: 3
+    transition: opacity 160ms ease
+
+  .hn-refresh-bar.is-active
+    opacity: 1
+
+  .hn-refresh-bar::after
+    content: ''
+    display: block
+    width: 38%
+    height: 100%
+    border-radius: inherit
+    animation: hn-refresh-slide 1.1s ease-in-out infinite
+
+  &.hn-theme-dark .hn-refresh-bar::after
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.2) 0%, rgba(125, 211, 252, 0.95) 50%, rgba(56, 189, 248, 0.2) 100%)
+
+  &.hn-theme-light .hn-refresh-bar::after
+    background: linear-gradient(90deg, rgba(2, 132, 199, 0.15) 0%, rgba(14, 165, 233, 0.85) 50%, rgba(2, 132, 199, 0.15) 100%)
+
+  @keyframes hn-sync-progress
+    0%
+      transform: translateX(-115%)
+    100%
+      transform: translateX(290%)
+
+  @keyframes hn-refresh-slide
+    0%
+      transform: translateX(-120%)
+    100%
+      transform: translateX(340%)
+
   @keyframes hn-pulse
     0%, 100%
       opacity: 1
@@ -696,6 +785,36 @@ formatUpdatedAt: (iso) ->
     if text? then String(text) else ''
   catch
     ''
+
+formatUpdatedLabel: (iso) ->
+  return '' unless iso?
+  try
+    d = new Date(iso)
+    return '' if isNaN(d.getTime())
+    ageMs = Date.now() - d.getTime()
+    if ageMs >= 0 and ageMs < 60000
+      return 'Updated just now'
+    label = @formatUpdatedAt(iso)
+    if label then "Updated #{label}" else ''
+  catch
+    ''
+
+initialLoadingHtml: ->
+  """
+  <div class="hn-initial-load">
+    <div class="hn-sync-bar" role="progressbar" aria-label="Loading headlines">
+      <span class="hn-sync-bar-fill"></span>
+    </div>
+    <p class="hn-sync-label">Syncing today's signal…</p>
+  </div>
+  """
+
+payloadHasStories: (categories) ->
+  return false unless Array.isArray(categories)
+  for category in categories
+    raw = if Array.isArray(category?.stories) then category.stories else []
+    return true if raw.length > 0
+  false
 
 normalizeHref: (raw) ->
   value = if raw? then String(raw).trim() else ''
@@ -886,6 +1005,47 @@ saveStoriesPerCategory: (count) ->
   catch
     #
 
+loadCachedPayload: ->
+  return @memoryPayload if @memoryPayload?
+  try
+    raw = localStorage.getItem PAYLOAD_KEY
+    return null unless raw
+    parsed = JSON.parse(raw)
+    return parsed if parsed?.ok
+  catch
+    null
+
+saveCachedPayload: (payload) ->
+  return unless payload?.ok
+  @memoryPayload = payload
+  try
+    localStorage.setItem PAYLOAD_KEY, JSON.stringify(payload)
+  catch
+    #
+
+fetchPayload: (domEl) ->
+  return if @fetchInFlight
+  @fetchInFlight = true
+  $root = $(domEl)
+  isBackground = @storiesEverLoaded is true
+  @setRefreshIndicator $root, true if isBackground
+
+  $.ajax
+    url: PROXY + API_URL
+    dataType: 'json'
+    timeout: 12000
+  .always =>
+    @fetchInFlight = false
+    @setRefreshIndicator $root, false if isBackground
+  .done (data) =>
+    return unless data?.ok
+    @saveCachedPayload data
+    @lastPayload = data
+    @renderFeed domEl
+  .fail =>
+    return if @storiesEverLoaded or @loadCachedPayload()?
+    @showMessage $root, 'Signal temporarily unavailable.', 'error'
+
 applyTheme: (domEl, theme) ->
   theme ?= @loadTheme()
   $root = $(domEl)
@@ -990,14 +1150,22 @@ setStatus: ($root, state) ->
     .addClass("is-#{state}")
 
 setUpdated: ($root, iso) ->
-  label = @formatUpdatedAt(iso)
-  text = if label then "Updated #{label}" else ''
-  $root.find('.hn-updated').text(text)
+  $root.find('.hn-updated').text @formatUpdatedLabel(iso)
+
+setRefreshIndicator: ($root, active) ->
+  $bar = $root.find('.hn-refresh-bar')
+  if active
+    $bar.addClass('is-active').attr('aria-hidden', 'false')
+  else
+    $bar.removeClass('is-active').attr('aria-hidden', 'true')
 
 showMessage: ($root, text, state) ->
   @setStatus $root, state
   safeText = if text? then String(text) else ''
-  $root.find('.hn-body').html "<p class=\"hn-message\">#{@escapeHtml(safeText)}</p>"
+  $root.find('.hn-body')
+    .removeClass('hn-body--compact hn-body--initial')
+    .html "<p class=\"hn-message\">#{@escapeHtml(safeText)}</p>"
+  @lastBodyHtml = null
   @setUpdated $root, ''
 
 setLogo: (domEl) ->
@@ -1026,44 +1194,87 @@ openStoryFromEvent: (event) ->
   href = $tile.attr('data-story-href')
   @openUrl href
 
+storiesForPayload: (payload, selectedCategory, maxPer) ->
+  return [] unless payload?.ok and Array.isArray(payload.categories)
+  categories = @mergeCategories(payload.categories)
+  selected = selectedCategory ? 'all'
+  max = maxPer ? @loadStoriesPerCategory()
+  if selected is 'all'
+    @balancedAllStories(categories, max)
+  else
+    @storiesForCategory(categories, selected, max)
+
+buildStoryListHtml: (stories) ->
+  return null unless stories?.length
+  html = '<div class="hn-story-list">'
+  for story in stories
+    tileHtml = @renderStoryTile(story)
+    html += tileHtml if tileHtml
+  html += '</div>'
+  html
+
+renderBodyShell: (payload) ->
+  if payload?
+    selected = @selectedCategory ? 'all'
+    stories = @storiesForPayload(payload, selected)
+    html = @buildStoryListHtml(stories)
+    if html?
+      compactClass = if stories.length <= 2 then ' hn-body--compact' else ''
+      return { bodyClass: "hn-body#{compactClass}", bodyHtml: html }
+
+  bodyClass: 'hn-body hn-body--initial'
+  bodyHtml: @initialLoadingHtml()
+
 renderFeed: (domEl) ->
   $root = $(domEl)
   payload = @lastPayload
   unless payload?.ok and Array.isArray(payload.categories)
+    if @storiesEverLoaded and @lastBodyHtml?
+      @applyPosition domEl
+      return
     @showMessage $root, 'Signal temporarily unavailable.', 'error'
     return
 
   categories = @mergeCategories(payload.categories)
   @syncCategorySelect domEl
   selected = @selectedCategory ? 'all'
-  maxPer = @loadStoriesPerCategory()
-  stories = if selected is 'all'
-    @balancedAllStories(categories, maxPer)
-  else
-    @storiesForCategory(categories, selected, maxPer)
+  stories = @storiesForPayload(payload, selected)
 
   if stories.length is 0
-    hasCategories = payload.categories?.length > 0
-    msg = if hasCategories
-      'No stories in this category. Try All in Settings.'
-    else
-      "Waiting for Today's Signal…"
-    @showMessage $root, msg, 'waiting'
+    if @payloadHasStories(categories)
+      msg = 'No stories in this category. Try All in Settings.'
+      @showMessage $root, msg, 'waiting'
+      @applyPosition domEl
+      return
+    if @storiesEverLoaded and @lastBodyHtml?
+      @setStatus $root, 'live'
+      @setUpdated $root, payload.generatedAt ? payload.updatedAt
+      @applyPosition domEl
+      return
+    unless @storiesEverLoaded
+      @setStatus $root, 'waiting'
+      @setUpdated $root, ''
+      $root.find('.hn-body')
+        .addClass('hn-body--initial')
+        .removeClass('hn-body--compact')
+        .html @initialLoadingHtml()
+      @applyPosition domEl
+      return
+    @showMessage $root, "Waiting for Today's Signal…", 'waiting'
     @applyPosition domEl
     return
 
   @setStatus $root, 'live'
   @setUpdated $root, payload.generatedAt ? payload.updatedAt
 
-  html = '<div class="hn-story-list">'
-  for story in stories
-    tileHtml = @renderStoryTile(story)
-    html += tileHtml if tileHtml
-  html += '</div>'
+  html = @buildStoryListHtml(stories)
   $body = $root.find('.hn-body')
-  $body.removeClass('hn-body--compact')
+  $body.removeClass('hn-body--compact hn-body--initial')
   $body.addClass('hn-body--compact') if stories.length <= 2
-  $body.html html
+  unless html is @lastBodyHtml
+    $body.html html
+    @lastBodyHtml = html
+  @storiesEverLoaded = true
   @applyPosition domEl
 
 renderAboutDropdown: ->
@@ -1123,25 +1334,21 @@ renderMenuBar: ->
   """
 
 command: (callback) ->
-  $.ajax
-    url: PROXY + API_URL
-    dataType: 'json'
-    timeout: 12000
-  .done (data) ->
-    payload = if data? then JSON.stringify(data) else '{}'
-    callback null, payload
-  .fail (_, __, err) ->
-    callback (err ? new Error('fetch failed')), '{}'
+  # Return immediately so render() is not blocked by the API round-trip.
+  callback null, ''
 
 render: ->
+  shell = @renderBodyShell(@loadCachedPayload())
+  statusClass = if shell.bodyClass.indexOf('hn-body--initial') >= 0 then 'is-waiting' else 'is-live'
   """
   <div class="hn-card">
+    <div class="hn-refresh-bar" aria-hidden="true"></div>
     <header class="hn-header">
       <div class="hn-header-row">
         <div class="hn-brand">
           <div class="hn-logo" role="img" aria-label="HappeningNow"></div>
           <div class="hn-brand-text">
-            <h1 class="hn-title">HappeningNow Signal<span class="hn-status-dot is-waiting" aria-hidden="true"></span></h1>
+            <h1 class="hn-title">HappeningNow Signal<span class="hn-status-dot #{statusClass}" aria-hidden="true"></span></h1>
             <p class="hn-subtitle">Today's top intelligence</p>
           </div>
         </div>
@@ -1149,28 +1356,30 @@ render: ->
       </div>
       <p class="hn-updated"></p>
     </header>
-    <div class="hn-body">
-      <p class="hn-message">Waiting for Today's Signal…</p>
+    <div class="#{shell.bodyClass}">
+      #{shell.bodyHtml}
     </div>
   </div>
   #{@renderMenuLayer()}
   """
 
 update: (output, domEl) ->
-  unless output?
-    @showMessage $(domEl), 'Signal temporarily unavailable.', 'error'
-    return
-  try
-    @lastPayload = JSON.parse(output)
-  catch
-    @showMessage $(domEl), 'Signal temporarily unavailable.', 'error'
-    return
-  @selectedCategory ?= 'all'
-  @renderFeed domEl
+  cached = @loadCachedPayload()
+  if cached?
+    @lastPayload = cached
+    @selectedCategory ?= 'all'
+    @renderFeed domEl
+  @fetchPayload domEl
 
 afterRender: (domEl) ->
-  @lastPayload = null
-  @selectedCategory = 'all'
+  cached = @loadCachedPayload()
+  @lastPayload = cached if cached?
+  @lastBodyHtml = null
+  @selectedCategory ?= 'all'
+  if cached? and @payloadHasStories(@mergeCategories(cached.categories))
+    @storiesEverLoaded = true
+  else
+    @storiesEverLoaded = false
   @setLogo domEl
   @applyTheme domEl
   @applyPosition domEl

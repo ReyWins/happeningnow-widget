@@ -6,6 +6,12 @@ A lightweight [Übersicht](https://tracesof.net/uebersicht/) desktop widget for 
 ![Übersicht](https://img.shields.io/badge/Übersicht-widget-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<p align="center">
+  <img src="screenshots/main.png" alt="HappeningNow Signal widget on the desktop with a story open in the browser" width="920" />
+</p>
+
+<p align="center"><em>Widget on your desktop — click any headline to open the full story in your browser.</em></p>
+
 ## About
 
 **HappeningNow Signal** is a glass-style news panel that sits on your macOS desktop and refreshes automatically from HappeningNow's public feed. No account, API key, or backend setup — just install the widget and read the signal.
@@ -15,10 +21,23 @@ Each story tile shows:
 - **Category** — Technology, Business, Global, and 8 other lanes
 - **Headline** — click to open the story in your browser
 - **Source** — where the story originated
-- **Freshness** — how recently it was picked up
+- **Freshness** — how active the story is in Today's Signal (see below)
 - **Breaking badge** — when a story is flagged as breaking news
 
-Use **Settings** to switch dark/light theme, move the panel (top-right, top-left, or center), filter by category, and choose how many stories appear per lane (1–3). **About** links to the HappeningNow website, public API feed, this GitHub repo, and a optional donation page.
+### Freshness badges
+
+Each story tile can show a colored badge from the HappeningNow feed. These labels reflect how recently a story entered — or how long it has remained in — **Today's Signal**, not when the original article was published.
+
+| Badge | Meaning |
+|-------|---------|
+| **Fresh** | Recently surfaced or still actively tracked. These are the newest entries in the signal. |
+| **Aging** | Been in the signal for a while. Still relevant, but no longer among the newest picks. |
+| **Stale** | Longest-running entry in its lane relative to fresher stories. May still be worth reading, but HappeningNow is treating it as cooling off. |
+| **Breaking** | Flagged as breaking news. Shown when HappeningNow marks the story as both breaking and actively developing. |
+
+Badge colors in the widget: **Fresh** is green, **Aging** is amber, **Stale** is red, and **Breaking** uses a distinct red highlight.
+
+Use **Settings** to switch dark/light theme, move the panel (top-right, top-left, or center), filter by category, and choose how many stories appear per lane (1–3). **About** links to the HappeningNow website, public API feed, this GitHub repo, and an optional donation page.
 
 This repository contains **client/widget code only** — no backend, Supabase, Netlify, secrets, or internal APIs.
 
@@ -38,6 +57,34 @@ This repository contains **client/widget code only** — no backend, Supabase, N
 - **Stories per category** — choose 1, 2, or 3 stories per lane in Settings
 - **Dark & light themes** — glassmorphism UI with persisted preferences
 - **Position control** — top-right (default), top-left, or center
+- **Instant shell on launch** — loading UI appears immediately on cold start; cached stories show on return visits while fresh data loads in the background
+
+## Screenshots
+
+<p align="center">
+  <img src="screenshots/default.png" alt="Default All-lanes view with balanced headlines across categories" width="420" />
+</p>
+
+<p align="center"><strong>Default view</strong> — balanced headlines across Global, Business, Technology, Cybersecurity, and more.</p>
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="screenshots/categories.png" alt="Settings menu with category filter dropdown open" width="400" /><br />
+      <strong>Category filter</strong> — all 11 lanes in Settings
+    </td>
+    <td align="center" width="50%">
+      <img src="screenshots/ent-1st.png" alt="Entertainment category filtered with one story per lane" width="400" /><br />
+      <strong>Single story</strong> — Entertainment lane, 1 story per category
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="screenshots/ent-3.png" alt="Entertainment category with three stories shown" width="420" /><br />
+      <strong>Three stories</strong> — Entertainment lane, 3 stories per category
+    </td>
+  </tr>
+</table>
 
 ## Install Übersicht
 
@@ -86,7 +133,7 @@ config =
 
 **Widget consumes a public cached JSON feed. No account or API key required.**
 
-- Lightweight `localStorage` keys for theme, position, and stories-per-category
+- Lightweight `localStorage` keys for theme, position, stories-per-category, and last feed payload
 - No tokens or credentials
 - Only calls the public grouped `today.json` endpoint via Übersicht's built-in proxy
 - Clicking a story opens `shortUrl` (or `url`) in your default browser
@@ -102,22 +149,18 @@ Edit `HappeningNowSignal.widget/index.coffee`:
 
 `styles.css` is a reference copy only; the `style:` block in `index.coffee` is what Übersicht applies.
 
-## Widget preview
-
-Dark glassmorphism panel (~400px wide) with:
-
-- **Header** — HappeningNow Signal + live status dot
-- **Story tiles** — category pill (lane label), Breaking + freshness badges, headline, source
-- **Click** — opens story short link in browser
-- **Empty** — “Waiting for Today's Signal…”
-- **Error** — “Signal temporarily unavailable.”
-
 ## Repository structure
 
 ```
 happeningnow-widget/
 ├── LICENSE
 ├── README.md
+├── screenshots/
+│   ├── main.png
+│   ├── default.png
+│   ├── categories.png
+│   ├── ent-1st.png
+│   └── ent-3.png
 └── HappeningNowSignal.widget/
     ├── index.coffee
     ├── logo.webp
@@ -128,6 +171,14 @@ happeningnow-widget/
 
 - macOS with Übersicht installed
 - Network access (public JSON feed only)
+
+## Changelog
+
+### 2.2.9
+- **Background fetch + cache** — feed data loads asynchronously in the browser. The last successful payload is saved to `localStorage`, so return visits show cached stories right away while fresh data loads behind the scenes.
+- **Smarter refresh behavior** — existing stories stay visible during normal refreshes. A thin top progress bar indicates background updates; the full loading state only appears when there are zero stories to show.
+- **Settings menu layout** — settings dropdown height increased so all options fit without a scrollbar.
+- **README** — added screenshots, freshness badge guide, and this changelog.
 
 ## Support the project
 
