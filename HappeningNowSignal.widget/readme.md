@@ -7,7 +7,7 @@ A lightweight [Übersicht](https://tracesof.net/uebersicht/) desktop widget for 
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 <p align="center">
-  <img src="screenshots/main.png" alt="HappeningNow Signal widget on the desktop with a story open in the browser" width="920" />
+  <img src="screenshot.png" alt="HappeningNow Signal widget on the desktop with a story open in the browser" width="420" />
 </p>
 
 <p align="center"><em>Widget on your desktop — click any headline to open the full story in your browser.</em></p>
@@ -62,7 +62,7 @@ This repository contains **client/widget code only** — no backend, Supabase, N
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/default.png" alt="Default All-lanes view with balanced headlines across categories" width="420" />
+  <img src="../screenshots/default.png" alt="Default All-lanes view with balanced headlines across categories" width="420" />
 </p>
 
 <p align="center"><strong>Default view</strong> — balanced headlines across Global, Business, Technology, Cybersecurity, and more.</p>
@@ -70,17 +70,17 @@ This repository contains **client/widget code only** — no backend, Supabase, N
 <table align="center">
   <tr>
     <td align="center" width="50%">
-      <img src="screenshots/categories.png" alt="Settings menu with category filter dropdown open" width="400" /><br />
+      <img src="../screenshots/categories.png" alt="Settings menu with category filter dropdown open" width="400" /><br />
       <strong>Category filter</strong> — all 11 lanes in Settings
     </td>
     <td align="center" width="50%">
-      <img src="screenshots/ent-1st.png" alt="Entertainment category filtered with one story per lane" width="400" /><br />
+      <img src="../screenshots/ent-1st.png" alt="Entertainment category filtered with one story per lane" width="400" /><br />
       <strong>Single story</strong> — Entertainment lane, 1 story per category
     </td>
   </tr>
   <tr>
     <td colspan="2" align="center">
-      <img src="screenshots/ent-3.png" alt="Entertainment category with three stories shown" width="420" /><br />
+      <img src="../screenshots/ent-3.png" alt="Entertainment category with three stories shown" width="420" /><br />
       <strong>Three stories</strong> — Entertainment lane, 3 stories per category
     </td>
   </tr>
